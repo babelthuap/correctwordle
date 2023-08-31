@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 class Pattern {
-  static String FILENAME = "patterns";
+  private static final String FILENAME = "patterns.koko";
   static byte ALL_GREEN = (byte)242;
 
   private int solutionsSize;

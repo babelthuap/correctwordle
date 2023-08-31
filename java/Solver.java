@@ -1,5 +1,9 @@
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,18 +27,28 @@ class Solver {
     System.out.println((System.currentTimeMillis() - start) + " ms");
   }
 
+  private static final String MEMO_FILENAME = "memo.koko";
+  private static final String RESULTS_FILENAME = "results.txt";
+
   private List<String> SOLUTION_LIST;
   private List<String> GUESS_LIST;
   private List<String> WORD_LIST;
   private ConcurrentHashMap<List<Integer>, Float> MEMO;
   private Pattern PATTERN;
 
+  @SuppressWarnings("unchecked")
   Solver(List<String> solutionList, List<String> guessList) {
     this.SOLUTION_LIST = solutionList;
     this.GUESS_LIST = guessList;
     this.WORD_LIST = Lists.concat(SOLUTION_LIST, GUESS_LIST);
     this.PATTERN = new Pattern(SOLUTION_LIST, GUESS_LIST);
-    this.MEMO = new ConcurrentHashMap<>();
+
+    try (FileInputStream fis = new FileInputStream(MEMO_FILENAME);
+         ObjectInputStream ois = new ObjectInputStream(fis)) {
+      this.MEMO = (ConcurrentHashMap<List<Integer>, Float>)ois.readObject();
+    } catch (Exception e) {
+      this.MEMO = new ConcurrentHashMap<>();
+    }
   }
 
   class Optimal implements Comparable<Optimal> {
@@ -119,12 +133,21 @@ class Solver {
     groupResults.subList(0, 3).forEach(System.out::println);
     System.out.println();
 
-    try (FileWriter writer = new FileWriter("results.txt")) {
+    // Save results to file
+    try (FileWriter writer = new FileWriter(RESULTS_FILENAME)) {
       for (var result : groupResults) {
         writer.write(result.toString());
         writer.write(System.getProperty("line.separator"));
       }
       writer.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    // Save MEMO to file
+    try (FileOutputStream fos = new FileOutputStream(MEMO_FILENAME);
+         ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+      oos.writeObject(MEMO);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -172,7 +195,7 @@ class Solver {
 
     optimal /= solnSet.size();
     if (specifiedGuess == -1) {
-      MEMO.put(solnSet, optimal);
+      MEMO.putIfAbsent(solnSet, optimal);
     }
     return optimal;
   }
