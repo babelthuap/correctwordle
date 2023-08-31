@@ -45,7 +45,6 @@ async function main() {
 
     console.timeEnd('main');
   } else {
-
     // Worker thread
     parentPort?.addListener('message', (guessIdx) => {
       if (guessIdx === undefined) {
@@ -81,27 +80,11 @@ function getOptimal(solnSet: number[], guessIdx?: number): Optimal {
 
   const optimal: Optimal = {guesses: [], value: Infinity};
 
-  // If not on the top level, try guesses in the solution set first
-  if (guessIdx === undefined) {
+  // If not on the top level, try guesses in the solution set first (for
+  // suitably small solution sets)
+  if (guessIdx === undefined && solnSet.length < 12) {
     for (const guess of solnSet) {
-      const groups = splitIntoGroups(guess, solnSet);
-      let valueForThisGuess = 0;
-      for (const [pattern, group] of groups) {
-        if (pattern === 242) {
-          // 242 == all green, meaning we solve it immediately
-          valueForThisGuess += 1;
-        } else {
-          valueForThisGuess += group.length * (1 + getOptimal(group).value);
-        }
-      }
-      valueForThisGuess /= solnSet.length;
-      if (valueForThisGuess < optimal.value) {
-        optimal.guesses.length = 0;
-        optimal.guesses.push(guess);
-        optimal.value = valueForThisGuess;
-      } else if (valueForThisGuess === optimal.value) {
-        optimal.guesses.push(guess);
-      }
+      processValueForGuess(guess, solnSet, optimal);
     }
   }
 
@@ -111,33 +94,42 @@ function getOptimal(solnSet: number[], guessIdx?: number): Optimal {
     const low = (guessIdx !== undefined ? guessIdx : 0);
     const high = (guessIdx !== undefined ? guessIdx + 1 : wordList.length);
     for (let guess = low; guess < high; guess++) {
-      const groups = splitIntoGroups(guess, solnSet);
-      if (groups.size === 1) {
-        // This guess does not help at all!
-        continue;
-      }
-      let valueForThisGuess = 0;
-      for (const [pattern, group] of groups) {
-        if (pattern === 242) {
-          // 242 == all green, meaning we solve it immediately
-          valueForThisGuess += 1;
-        } else {
-          valueForThisGuess += group.length * (1 + getOptimal(group).value);
-        }
-      }
-      valueForThisGuess /= solnSet.length;
-      if (valueForThisGuess < optimal.value) {
-        optimal.guesses.length = 0;
-        optimal.guesses.push(guess);
-        optimal.value = valueForThisGuess;
-      } else if (valueForThisGuess === optimal.value) {
-        optimal.guesses.push(guess);
-      }
+      processValueForGuess(guess, solnSet, optimal);
     }
   }
 
+  optimal.value /= solnSet.length;
   MEMO.set(hash, optimal);
   return optimal;
+}
+
+function processValueForGuess(
+    guess: number, solnSet: number[], optimal: Optimal) {
+  const groups = splitIntoGroups(guess, solnSet);
+  if (groups.size === 1) {
+    // This guess does not help at all!
+    return;
+  }
+  let valueForThisGuess = 0;
+  for (const [pattern, group] of groups) {
+    if (pattern === 242) {
+      // 242 == all green, meaning we solve it immediately
+      valueForThisGuess += 1;
+    } else {
+      valueForThisGuess += group.length * (1 + getOptimal(group).value);
+    }
+    if (valueForThisGuess > optimal.value) {
+      // We already know it's not going to be better
+      return;
+    }
+  }
+  if (valueForThisGuess < optimal.value) {
+    optimal.guesses.length = 0;
+    optimal.guesses.push(guess);
+    optimal.value = valueForThisGuess;
+  } else if (valueForThisGuess === optimal.value) {
+    optimal.guesses.push(guess);
+  }
 }
 
 function splitIntoGroups(guess: number, solnSet: number[]) {
