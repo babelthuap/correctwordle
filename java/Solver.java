@@ -6,16 +6,11 @@ import java.util.Map;
 class Solver {
   public static void main(String[] args) {
     var start = System.currentTimeMillis();
+    
     var solutionList = Lists.readList("solution_list.txt");
     var guessList = Lists.readList("guess_list.txt");
     var solver = new Solver(solutionList, guessList);
-
-    var solnSet = new ArrayList<Integer>();
-    for (int i = 0; i < 12; i++) {
-      solnSet.add(i);
-    }
-    System.out.println("solnSet: " + solver.printList(solnSet));
-    System.out.println(solver.getOptimal(solnSet));
+    solver.getOptimal();
 
     System.out.println((System.currentTimeMillis() - start) + " ms");
   }
@@ -55,6 +50,15 @@ class Solver {
     return str + "]";
   }
 
+  void getOptimal() {
+    var solnSet = new ArrayList<Integer>();
+    for (int i = 0; i < 20; i++) {
+      solnSet.add(i);
+    }
+    System.out.println("solnSet: " + printList(solnSet));
+    System.out.println(getOptimal(solnSet));
+  }
+
   Optimal getOptimal(List<Integer> solnSet) { return getOptimal(solnSet, -1); }
 
   Optimal getOptimal(List<Integer> solnSet, int specifiedGuess) {
@@ -87,7 +91,7 @@ class Solver {
       }
       // The best we can do for non-solutions is 2. If we haven't already
       // reached that, then try all possible guesses.
-      if (optimal.value > 2) {
+      if (optimal.value > 2 * solnSet.size()) {
         for (int guess = 0; guess < WORD_LIST.size(); guess++) {
           processValueForGuess(guess, solnSet, optimal);
         }
