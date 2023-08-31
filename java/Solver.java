@@ -2,11 +2,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 class Solver {
   public static void main(String[] args) {
     var start = System.currentTimeMillis();
-    
+
     var solutionList = Lists.readList("solution_list.txt");
     var guessList = Lists.readList("guess_list.txt");
     var solver = new Solver(solutionList, guessList);
@@ -29,7 +34,7 @@ class Solver {
     this.MEMO = new HashMap<>();
   }
 
-  class Optimal {
+  class Optimal implements Comparable<Optimal> {
     public List<Integer> guesses;
     public float value;
 
@@ -38,25 +43,58 @@ class Solver {
       this.value = value;
     }
 
-    public String toString() { return value + ": " + printList(guesses); }
+    @Override
+    public int compareTo(Optimal other) {
+      return this.value != other.value
+          ? Float.compare(this.value, other.value)
+          : this.guesses.get(0).compareTo(other.guesses.get(0));
+    }
+
+    @Override
+    public String toString() {
+      return value + ": " + printList(guesses);
+    }
   }
 
   private String printList(List<Integer> list) {
     String str = "[";
-    for (var wordIdx : list) {
-      str += WORD_LIST.get(wordIdx);
-      str += ",";
+    for (int i = 0; i < list.size(); i++) {
+      if (i > 0) {
+        str += ",";
+      }
+      str += WORD_LIST.get(list.get(i));
     }
     return str + "]";
   }
 
   void getOptimal() {
     var solnSet = new ArrayList<Integer>();
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 30; i++) {
       solnSet.add(i);
     }
     System.out.println("solnSet: " + printList(solnSet));
-    System.out.println(getOptimal(solnSet));
+
+    System.out.println("availableProcessors: " +
+                       Runtime.getRuntime().availableProcessors());
+    ExecutorService executor = Executors.newWorkStealingPool(
+        Math.max(1, Runtime.getRuntime().availableProcessors()));
+
+    ConcurrentSkipListSet<Optimal> results = new ConcurrentSkipListSet<>();
+    try {
+      executor
+          .submit(() -> {
+            IntStream.range(0, WORD_LIST.size())
+                .parallel()
+                .mapToObj(i -> getOptimal(solnSet, i))
+                .forEach(results::add);
+          })
+          .get();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    System.out.println("results:");
+    results.stream().sorted().limit(10).forEach(System.out::println);
   }
 
   Optimal getOptimal(List<Integer> solnSet) { return getOptimal(solnSet, -1); }
@@ -73,8 +111,9 @@ class Solver {
       // Calculate recursively...
     }
 
-    if (MEMO.containsKey(solnSet)) {
-      return MEMO.get(solnSet);
+    Optimal cached = MEMO.get(solnSet);
+    if (cached != null) {
+      return cached;
     }
 
     var optimal = new Optimal(new ArrayList<>(), Float.MAX_VALUE);
@@ -99,7 +138,9 @@ class Solver {
     }
 
     optimal.value /= solnSet.size();
-    MEMO.put(solnSet, optimal);
+    if (specifiedGuess == -1) {
+      MEMO.put(solnSet, optimal);
+    }
     return optimal;
   }
 
