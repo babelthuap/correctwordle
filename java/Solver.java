@@ -8,7 +8,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 class Solver {
@@ -27,7 +26,7 @@ class Solver {
   private List<String> SOLUTION_LIST;
   private List<String> GUESS_LIST;
   private List<String> WORD_LIST;
-  private ConcurrentHashMap<List<Integer>, Optimal> MEMO;
+  private ConcurrentHashMap<List<Integer>, Float> MEMO;
   private Pattern PATTERN;
 
   Solver(List<String> solutionList, List<String> guessList) {
@@ -90,9 +89,11 @@ class Solver {
             IntStream.range(0, WORD_LIST.size())
                 .parallel()
                 .mapToObj(i -> {
-                  var opt = getOptimal(solnSet, i);
-                  System.out.println(opt);
-                  return opt;
+                  Float optimalValue = getOptimal(solnSet, i);
+                  System.out.println(WORD_LIST.get(i) + ": " + optimalValue);
+                  var list = new ArrayList<Integer>();
+                  list.add(i);
+                  return new Optimal(list, optimalValue);
                 })
                 .forEach(results::add);
           })
@@ -101,25 +102,26 @@ class Solver {
       e.printStackTrace();
     }
 
-    List<Optimal> optimals = new ArrayList<>();
+    List<Optimal> groupResults = new ArrayList<>();
     float value = 0;
-    for (var result : results.stream().sorted().collect(Collectors.toList())) {
+    for (var result : results) {
       if (result.value == value) {
-        optimals.get(optimals.size() - 1).guesses.addAll(result.guesses);
+        groupResults.get(groupResults.size() - 1)
+            .guesses.addAll(result.guesses);
       } else {
         value = result.value;
-        optimals.add(new Optimal(result.guesses, result.value));
+        groupResults.add(new Optimal(result.guesses, result.value));
       }
     }
 
     System.out.println();
     System.out.println("top results:");
-    optimals.subList(0, 3).forEach(System.out::println);
+    groupResults.subList(0, 3).forEach(System.out::println);
     System.out.println();
 
     try (FileWriter writer = new FileWriter("results.txt")) {
-      for (var optimal : optimals) {
-        writer.write(optimal.toString());
+      for (var result : groupResults) {
+        writer.write(result.toString());
         writer.write(System.getProperty("line.separator"));
       }
       writer.close();
@@ -128,59 +130,59 @@ class Solver {
     }
   }
 
-  Optimal getOptimal(List<Integer> solnSet) { return getOptimal(solnSet, -1); }
+  Float getOptimal(List<Integer> solnSet) { return getOptimal(solnSet, -1); }
 
-  Optimal getOptimal(List<Integer> solnSet, int specifiedGuess) {
+  Float getOptimal(List<Integer> solnSet, int specifiedGuess) {
     switch (solnSet.size()) {
     case 0:
       throw new RuntimeException("Called getOptimal with no input");
     case 1:
-      return new Optimal(solnSet, 1.0f);
+      return 1.0f;
     case 2:
-      return new Optimal(solnSet, 1.5f);
+      return 1.5f;
     default:
       // Calculate recursively...
     }
 
-    Optimal cached = MEMO.get(solnSet);
+    Float cached = MEMO.get(solnSet);
     if (cached != null) {
       return cached;
     }
 
-    var optimal = new Optimal(new ArrayList<>(), Float.MAX_VALUE);
+    float optimal = Float.MAX_VALUE;
 
     if (specifiedGuess != -1) {
-      processValueForGuess(specifiedGuess, solnSet, optimal);
+      optimal = processValueForGuess(specifiedGuess, solnSet, optimal);
     } else {
       // Try guesses in the solution set first (for suitably small solution
       // sets)
       if (solnSet.size() < 12) {
         for (var guess : solnSet) {
-          processValueForGuess(guess, solnSet, optimal);
+          optimal = processValueForGuess(guess, solnSet, optimal);
         }
       }
       // The best we can do for non-solutions is 2. If we haven't already
       // reached that, then try all possible guesses.
-      if (optimal.value > 2 * solnSet.size()) {
+      if (optimal > 2 * solnSet.size()) {
         for (int guess = 0; guess < WORD_LIST.size(); guess++) {
-          processValueForGuess(guess, solnSet, optimal);
+          optimal = processValueForGuess(guess, solnSet, optimal);
         }
       }
     }
 
-    optimal.value /= solnSet.size();
+    optimal /= solnSet.size();
     if (specifiedGuess == -1) {
       MEMO.put(solnSet, optimal);
     }
     return optimal;
   }
 
-  private void processValueForGuess(int guess, List<Integer> solnSet,
-                                    Optimal optimal) {
+  private float processValueForGuess(int guess, List<Integer> solnSet,
+                                     float optimal) {
     Map<Byte, List<Integer>> groups = splitIntoGroups(guess, solnSet);
     if (groups.size() == 1) {
       // This guess does not help at all!
-      return;
+      return optimal;
     }
     float valueForThisGuess = 0f;
     for (var entry : groups.entrySet()) {
@@ -198,21 +200,15 @@ class Solver {
           valueForThisGuess += 5.0f; // 2 * (1.0 + 1.5)
           break;
         default:
-          valueForThisGuess += group.size() * (1.0 + getOptimal(group).value);
+          valueForThisGuess += group.size() * (1.0 + getOptimal(group));
         }
       }
-      if (valueForThisGuess > optimal.value) {
+      if (valueForThisGuess > optimal) {
         // We already know it's not going to be better
-        return;
+        return optimal;
       }
     }
-    if (valueForThisGuess < optimal.value) {
-      optimal.guesses.clear();
-      optimal.guesses.add(guess);
-      optimal.value = valueForThisGuess;
-    } else if (valueForThisGuess == optimal.value) {
-      optimal.guesses.add(guess);
-    }
+    return valueForThisGuess < optimal ? valueForThisGuess : optimal;
   }
 
   private Map<Byte, List<Integer>> splitIntoGroups(int guess,
