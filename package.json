@@ -1,0 +1,12 @@
+{
+  "name": "correctwordle",
+  "version": "1.0.0",
+  "description": "fully correct wordle solver",
+  "main": "main.ts",
+  "author": "nicholas.babelthuap@gmail.com",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.5.7",
+    "typescript": "^5.2.2"
+  }
+}
