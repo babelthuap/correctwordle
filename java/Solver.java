@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,7 +19,8 @@ class Solver {
     var solutionList = Lists.readList("solution_list.txt");
     var guessList = Lists.readList("guess_list.txt");
     var solver = new Solver(solutionList, guessList);
-    solver.getOptimal();
+    solver.getOptimal(args.length > 0 ? Integer.parseInt(args[0])
+                                      : solutionList.size());
 
     System.out.println((System.currentTimeMillis() - start) + " ms");
   }
@@ -26,7 +28,7 @@ class Solver {
   private List<String> SOLUTION_LIST;
   private List<String> GUESS_LIST;
   private List<String> WORD_LIST;
-  private Map<List<Integer>, Optimal> MEMO;
+  private ConcurrentHashMap<List<Integer>, Optimal> MEMO;
   private Pattern PATTERN;
 
   Solver(List<String> solutionList, List<String> guessList) {
@@ -34,7 +36,7 @@ class Solver {
     this.GUESS_LIST = guessList;
     this.WORD_LIST = Lists.concat(SOLUTION_LIST, GUESS_LIST);
     this.PATTERN = new Pattern(SOLUTION_LIST, GUESS_LIST);
-    this.MEMO = new HashMap<>();
+    this.MEMO = new ConcurrentHashMap<>();
   }
 
   class Optimal implements Comparable<Optimal> {
@@ -70,9 +72,9 @@ class Solver {
     return str + "]";
   }
 
-  void getOptimal() {
+  void getOptimal(int solnSetSize) {
     var solnSet = new ArrayList<Integer>();
-    for (int i = 0; i < SOLUTION_LIST.size(); i++) {
+    for (int i = 0; i < solnSetSize; i++) {
       solnSet.add(i);
     }
     System.out.println("solnSet: " + printList(solnSet));
