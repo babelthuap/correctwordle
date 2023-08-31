@@ -1,4 +1,3 @@
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -102,15 +101,25 @@ class Solver {
       e.printStackTrace();
     }
 
+    List<Optimal> optimals = new ArrayList<>();
+    float value = 0;
+    for (var result : results.stream().sorted().collect(Collectors.toList())) {
+      if (result.value == value) {
+        optimals.get(optimals.size() - 1).guesses.addAll(result.guesses);
+      } else {
+        value = result.value;
+        optimals.add(new Optimal(result.guesses, result.value));
+      }
+    }
+
     System.out.println();
     System.out.println("top results:");
-    results.stream().sorted().limit(10).forEach(System.out::println);
+    optimals.subList(0, 3).forEach(System.out::println);
     System.out.println();
 
     try (FileWriter writer = new FileWriter("results.txt")) {
-      for (var result :
-           results.stream().sorted().collect(Collectors.toList())) {
-        writer.write(result.toString());
+      for (var optimal : optimals) {
+        writer.write(optimal.toString());
         writer.write(System.getProperty("line.separator"));
       }
       writer.close();
