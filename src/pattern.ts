@@ -8,7 +8,6 @@ export function getPattern(guessIdx: number, solutionIdx: number) {
 }
 
 export function init(solutionList: string[], guessList: string[]) {
-  console.time('pattern init');
   SOLUTIONS_LENGTH = solutionList.length;
   try {
     PATTERNS = new Uint8Array(readFileSync('patterns'));
@@ -16,8 +15,8 @@ export function init(solutionList: string[], guessList: string[]) {
         (solutionList.length + guessList.length) * solutionList.length) {
       throw 'wrong length';
     }
-    console.timeEnd('pattern init');
   } catch (e) {
+    console.time('pattern init');
     const wordList = [...solutionList, ...guessList];
     const charSets = Uint32Array.from(wordList, getCharSet);
     PATTERNS = new Uint8Array(wordList.length * SOLUTIONS_LENGTH);
