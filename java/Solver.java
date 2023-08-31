@@ -1,3 +1,6 @@
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -69,7 +72,7 @@ class Solver {
 
   void getOptimal() {
     var solnSet = new ArrayList<Integer>();
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < SOLUTION_LIST.size(); i++) {
       solnSet.add(i);
     }
     System.out.println("solnSet: " + printList(solnSet));
@@ -85,7 +88,11 @@ class Solver {
           .submit(() -> {
             IntStream.range(0, WORD_LIST.size())
                 .parallel()
-                .mapToObj(i -> getOptimal(solnSet, i))
+                .mapToObj(i -> {
+                  var opt = getOptimal(solnSet, i);
+                  System.out.println(opt);
+                  return opt;
+                })
                 .forEach(results::add);
           })
           .get();
@@ -93,8 +100,21 @@ class Solver {
       e.printStackTrace();
     }
 
-    System.out.println("results:");
+    System.out.println();
+    System.out.println("top results:");
     results.stream().sorted().limit(10).forEach(System.out::println);
+    System.out.println();
+
+    try (FileWriter writer = new FileWriter("results.txt")) {
+      for (var result :
+           results.stream().sorted().collect(Collectors.toList())) {
+        writer.write(result.toString());
+        writer.write(System.getProperty("line.separator"));
+      }
+      writer.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   Optimal getOptimal(List<Integer> solnSet) { return getOptimal(solnSet, -1); }
