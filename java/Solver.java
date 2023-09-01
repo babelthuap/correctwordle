@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 class Solver {
@@ -100,9 +101,13 @@ class Solver {
     try {
       executor
           .submit(() -> {
+            final AtomicInteger n = new AtomicInteger(0);
             IntStream.range(0, WORD_LIST.size())
                 .parallel()
                 .mapToObj(i -> {
+                  System.out.printf("guess %s / %s => %s\n",
+                                    n.getAndIncrement(), WORD_LIST.size(),
+                                    WORD_LIST.get(i));
                   Float optimalValue = getOptimal(solnSet, i);
                   System.out.println(WORD_LIST.get(i) + ": " + optimalValue);
                   var list = new ArrayList<Integer>();
