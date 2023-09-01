@@ -17,15 +17,11 @@ import java.util.stream.IntStream;
 
 class Solver {
   public static void main(String[] args) {
-    var start = System.currentTimeMillis();
-
     var solutionList = Lists.readList("solution_list.txt");
     var guessList = Lists.readList("guess_list.txt");
     var solver = new Solver(solutionList, guessList);
     solver.getOptimal(args.length > 0 ? Integer.parseInt(args[0])
                                       : solutionList.size());
-
-    System.out.println((System.currentTimeMillis() - start) + " ms");
   }
 
   private static final String MEMO_FILENAME = "memo.koko";
@@ -86,6 +82,8 @@ class Solver {
   }
 
   void getOptimal(int solnSetSize) {
+    var start = System.currentTimeMillis();
+
     var solnSet = new ArrayList<Integer>();
     for (int i = 0; i < solnSetSize; i++) {
       solnSet.add(i);
@@ -137,6 +135,9 @@ class Solver {
     System.out.println("top results:");
     groupResults.subList(0, 3).forEach(System.out::println);
     System.out.println();
+
+    System.out.println("getOptimal(" + solnSetSize + ") => " +
+                       (System.currentTimeMillis() - start) + " ms");
 
     // Save results to file
     try (FileWriter writer = new FileWriter(RESULTS_FILENAME)) {
