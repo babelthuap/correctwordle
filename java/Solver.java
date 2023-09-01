@@ -104,7 +104,7 @@ class Solver {
                 .parallel()
                 .mapToObj(i -> {
                   System.out.printf("guess %s / %s => %s\n",
-                                    n.getAndIncrement(), WORD_LIST.size(),
+                                    n.incrementAndGet(), WORD_LIST.size(),
                                     WORD_LIST.get(i));
                   Float optimalValue = getOptimal(solnSet, i);
                   System.out.println(WORD_LIST.get(i) + ": " + optimalValue);
